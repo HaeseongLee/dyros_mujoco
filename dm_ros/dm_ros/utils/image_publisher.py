@@ -31,9 +31,6 @@ class MujocoCameraBridge(Node):
         self.image = []
         self.ctrl_step = 0
 
-        self.allow_to_pub = True
-
-
         self.get_logger().info(f"{self.camera_name} node is loaded")
 
     def getImage(self, image, time):
@@ -41,18 +38,13 @@ class MujocoCameraBridge(Node):
         self.ctrl_step = time
 
     def image_publish_callback(self):
-        if self.allow_to_pub:
-            image_msg = Image()
-            image_msg.header.stamp.sec = self.ctrl_step
-            image_msg.height = self.height
-            image_msg.width = self.width
-            image_msg.encoding = "rgb8"
-            image_msg.is_bigendian = False
-            image_msg.step = self.width * 3
-            image_msg.data = np.array(self.image).tobytes()
+        image_msg = Image()
+        image_msg.header.stamp.sec = self.ctrl_step
+        image_msg.height = self.height
+        image_msg.width = self.width
+        image_msg.encoding = "rgb8"
+        image_msg.is_bigendian = False
+        image_msg.step = self.width * 3
+        image_msg.data = np.array(self.image).tobytes()
 
-            # 이미지 퍼블리시
-            self.image_publisher.publish(image_msg)
-            # self.get_logger().info(f'Image published at {self.ctrl_step}')
-
-            self.allow_to_pub = False
+        self.image_publisher.publish(image_msg)

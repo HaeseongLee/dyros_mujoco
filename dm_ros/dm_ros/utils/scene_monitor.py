@@ -1,10 +1,6 @@
 from rclpy.node import Node
 import mujoco
-from geometry_msgs.msg import PoseArray, Pose
-from geometry_msgs.msg import Point, Quaternion
-from std_msgs.msg import String
 from scipy.spatial.transform import Rotation as R
-import numpy as np
 
 class SceneMonitor(Node):
     def __init__(self, model, data):

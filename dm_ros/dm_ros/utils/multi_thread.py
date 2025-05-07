@@ -6,7 +6,8 @@ import threading
 import time
 from .scene_monitor import SceneMonitor
 from .image_publisher import MujocoCameraBridge
-import numpy as np
+from rclpy.executors import MultiThreadedExecutor
+
 
 
 class MujocoROSBridge(Node):
@@ -34,21 +35,23 @@ class MujocoROSBridge(Node):
         self.model.opt.timestep = self.dt
        
         self.sm = SceneMonitor(self.model, self.data)
-
         self.hand_eye = MujocoCameraBridge(self.model, camera_info)
         self.top_down_cam = MujocoCameraBridge(self.model, ['top_down_cam', 640, 480, self.fps])
-        
-        # self.renderer = mujoco.Renderer(self.model, width=self.width, height=self.height)
-
+      
         self.ctrl_dof = 8 # 7 + 1
         self.ctrl_step = 0
+
+        # self.timer = self.create_timer(self.dt, self.control_callback)
 
         # 스레드 실행
         self.running = True
         self.lock = threading.Lock()
         self.robot_thread = threading.Thread(target=self.robot_control, daemon=True)
+
         # self.hand_eye_thread = threading.Thread(target=self.hand_eye_control, daemon=True)
         # self.td_cam_thread = threading.Thread(target=self.td_cam_control, daemon=True)
+
+        self.server_thread = threading.Thread(target=self.srv_control, daemon=True)
 
 
     # visualize thread = main thread
@@ -61,12 +64,13 @@ class MujocoROSBridge(Node):
                 self.robot_thread.start()    
                 # self.hand_eye_thread.start()
                 # self.td_cam_thread.start()
+                self.server_thread.start()
+
 
                 while self.running and viewer.is_running():   
                     start_time = time.perf_counter()       
 
                     with self.lock:                        
-
                         viewer.sync()  # 화면 업데이트          
 
                     self.time_sync(1/self.fps, start_time, False)
@@ -81,7 +85,10 @@ class MujocoROSBridge(Node):
             self.robot_thread.join()
             # self.hand_eye_thread.join()
             # self.td_cam_thread.join()
+            self.server_thread.join()
+
             self.sm.destroy_node()
+
 
 
     def robot_control(self):
@@ -99,7 +106,7 @@ class MujocoROSBridge(Node):
                     self.rc.updateModel(self.data, self.ctrl_step)
                     
                     # -------------------- ADD Controller ---------------------------- #
-                    rclpy.spin_once(self.rc, timeout_sec=0.0001) # for scene monitor
+                    # rclpy.spin_once(self.rc, timeout_sec=0.0001) # for scene monitor
 
                     self.data.ctrl[:self.ctrl_dof] = self.rc.compute()   
 
@@ -110,18 +117,15 @@ class MujocoROSBridge(Node):
 
                     # print("Time in robot node: ", self.syn_cnt)
                     self.ctrl_step += 1
-
+                    
                 self.time_sync(self.dt, start_time, False)
             
         except KeyboardInterrupt:
             self.get_logger().into("\nSimulation interrupted. Closing robot controller ...")
-            # self.rc.tm.destroy_node()
             self.rc.destroy_node()
-
 
     def hand_eye_control(self):
         renderer = mujoco.Renderer(self.model, width=self.width, height=self.height)
-        # renderer = self.hand_eye_renderer
         hand_eye_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_CAMERA, self.camera_name)
 
         while rclpy.ok() and self.running:            
@@ -169,3 +173,13 @@ class MujocoROSBridge(Node):
 
         if verbose:
             print(f'Time {elapsed_time*1000:.4f} + {sleep_time*1000:.4f} = {(elapsed_time + sleep_time)*1000} ms')
+    
+    def srv_control(self):
+        executor = MultiThreadedExecutor(num_threads=2)
+        executor.add_node(self.rc.tm)
+        executor.add_node(self.rc.jm)
+        executor.spin()
+        executor.shutdown()
+
+        self.rc.tm.destroy_node()
+        self.rc.jm.destroy_node()

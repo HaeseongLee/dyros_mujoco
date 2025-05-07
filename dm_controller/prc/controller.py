@@ -7,10 +7,10 @@ from sensor_msgs.msg import JointState
 from rclpy.node import Node
 from scipy.spatial.transform import Rotation as R
 
-class JointMoveServer:
-    def __init__(self, node):
-        self.node = node
-        self.srv = self.node.create_service(JointMove, '/joint_move_srv', self.goal_callback)
+class JointMoveServer(Node):
+    def __init__(self):
+        super().__init__("joint_move_server")
+        self.srv = self.create_service(JointMove, '/joint_move_srv', self.goal_callback)
 
         self.goal_received = False
 
@@ -39,10 +39,10 @@ class JointMoveServer:
         self.x = None
         self.duration = None
 
-class TaskMoveServer:
-    def __init__(self, node):
-        self.node = node
-        self.srv = self.node.create_service(TaskMove, '/task_move_srv', self.goal_callback)
+class TaskMoveServer(Node):
+    def __init__(self):
+        super().__init__("task_move_server")
+        self.srv = self.create_service(TaskMove, '/task_move_srv', self.goal_callback)
 
         self.goal_received = False
 
@@ -90,8 +90,8 @@ class Fr3Controller(Node):
 
         self.is_ready = False
 
-        self.tm = TaskMoveServer(self)
-        self.jm = JointMoveServer(self)
+        self.tm = TaskMoveServer()
+        self.jm = JointMoveServer()
 
     def updateModel(self, data, time):
 

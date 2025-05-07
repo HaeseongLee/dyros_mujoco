@@ -3,8 +3,6 @@ import os
 from prc import Fr3Controller
 from .utils.multi_thread import MujocoROSBridge
 
-# import time
-
 def main():
     current_dir = os.path.dirname(os.path.realpath(__file__))
     
@@ -25,6 +23,7 @@ def main():
     
     bridge.destroy_node()
     rclpy.shutdown()
+
 
     
 if __name__=="__main__":    

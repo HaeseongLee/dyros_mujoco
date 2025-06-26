@@ -34,7 +34,7 @@ class MujocoROSBridge(Node):
         self.model.opt.timestep = self.dt
        
         self.sm = SceneMonitor(self.model, self.data)
-        # self.hand_eye = MujocoCameraBridge(self.model, camera_info)
+        self.hand_eye = MujocoCameraBridge(self.model, camera_info)
       
         self.ctrl_dof = 8 # 7 + 1 
         self.ctrl_step = 0
